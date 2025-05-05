@@ -12,7 +12,7 @@ from deepeval.metrics import (
     GEval
 )
 
-from app.constants import (
+from constants import (
     RELEVANCY, 
     CORRECTNESS, 
     CLARITY, 
