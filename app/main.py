@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
-from app.constants import METRIC_TF_EVENT_PATH, METRIC_DEEPEVAL_PATH
+from constants import METRIC_TF_EVENT_PATH, METRIC_DEEPEVAL_PATH
 
 logger = logging.getLogger(__name__)
 
