@@ -96,7 +96,6 @@ def generate_response() -> str:
     generation_pipeline = pipeline(
         task="text-generation", 
         model=MODEL_PATH, 
-        torch_dtype=torch.bfloat16, 
         device_map="auto"
     )
 
@@ -104,10 +103,10 @@ def generate_response() -> str:
         dataset_json = json.load(f)
     
     for ds in dataset_json:
-        prompt = ds['prompt']
+        question = ds['question']
         chat = [
             {"role": "system", "content": "Answer clearly about user input"},
-            {"role": "user", "content": prompt}
+            {"role": "user", "content": question}
         ]
         response = generation_pipeline(chat)
         response = response[0]["generated_text"][-1]["content"]
@@ -119,7 +118,7 @@ def generate_response() -> str:
     return TEST_DATASET_DEEPEVAL_PATH
 
 
-def set_deepeval_dataset() -> EvaluationDataset:
+def set_deepeval_dataset(data_generation_method: str) -> EvaluationDataset:
     """
     Set up deepeval dataset from JSON file.
     
@@ -129,16 +128,21 @@ def set_deepeval_dataset() -> EvaluationDataset:
     deepeval_dataset = EvaluationDataset()
 
     # Add test cases from JSON file
+    if data_generation_method == "raft":
+        expected_output_key_name = "cot_answer"
+    else:
+        expected_output_key_name = "answer"
+        
     deepeval_dataset.add_test_cases_from_json_file(
         file_path=TEST_DATASET_DEEPEVAL_PATH,
-        input_key_name="prompt",
+        input_key_name="question",
         actual_output_key_name="actual_output",
-        expected_output_key_name="response",
+        expected_output_key_name=expected_output_key_name,
     )
     return deepeval_dataset
 
 
-def generate_evaluate_pipeline(metric_names: List[str]) -> None:
+def generate_evaluate_pipeline(metric_names: List[str], data_generation_method: str) -> None:
     """
     Run the generation and evaluation pipeline with specified metrics.
     
@@ -149,7 +153,7 @@ def generate_evaluate_pipeline(metric_names: List[str]) -> None:
     generate_response()
     
     # Set up evaluation dataset
-    deepeval_dataset = set_deepeval_dataset()
+    deepeval_dataset = set_deepeval_dataset(data_generation_method)
 
     # Initialize metrics
     metrics = [AnswerRelevancyMetric(threshold=0.5)]  # Default metric
@@ -213,6 +217,11 @@ def generate_evaluate_pipeline(metric_names: List[str]) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate LLM with selected metrics.")
     parser.add_argument(
+        "--data-generation-method",
+        required=False,
+        default="raft",
+    )
+    parser.add_argument(
         "--metrics",
         nargs="+",
         help="List of metrics to use (e.g., --metrics relevancy correctness hallucination)",
@@ -220,4 +229,4 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    generate_evaluate_pipeline(args.metrics)
+    generate_evaluate_pipeline(args.metrics, args.data_generation_method)
