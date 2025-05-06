@@ -5,7 +5,7 @@ from typing import Dict, List
 
 import pandas as pd
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, FastAPI
 from pydantic import BaseModel
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
@@ -123,3 +123,6 @@ async def get_llm_finetuning_run_deepeval_metric() -> LLMFinetuningRunMetricDeep
     except Exception as e:
         logger.error(f"Error getting LLM finetuning run deepeval metric: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+app = FastAPI()
+app.include_router(router)
