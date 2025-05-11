@@ -4,7 +4,7 @@ import logging
 from typing import Dict, List
 
 import pandas as pd
-
+import gradio as gr
 from fastapi import APIRouter, HTTPException, FastAPI
 from pydantic import BaseModel
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
@@ -107,22 +107,14 @@ async def get_llm_finetuning_run_tensorboard_metric() -> LLMFinetuningRunMetricT
         logger.error(f"Error getting LLM finetuning run tensorboard metric: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
-@router.get("/metric/deepeval")
-async def get_llm_finetuning_run_deepeval_metric() -> LLMFinetuningRunMetricDeepevalResponse:
-    """Get the deepeval metric for the LLM finetuning run."""
-    try:
-        with open(METRIC_DEEPEVAL_PATH, "r") as f:
-            metrics = json.load(f)
-            
-        metric_df = deepeval_parsing(metrics)
-        metric_df_dict = json.loads(metric_df.to_json())
-        
-        return LLMFinetuningRunMetricDeepevalResponse(result=metric_df_dict)
-        
-    except Exception as e:
-        logger.error(f"Error getting LLM finetuning run deepeval metric: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 app = FastAPI()
 app.include_router(router)
+
+with open(METRIC_DEEPEVAL_PATH, "r") as f:
+    metrics = json.load(f)    
+    metric_df = deepeval_parsing(metrics)
+
+with gr.Blocks() as demo:
+    gr.Dataframe(metric_df)
+
+app = gr.mount_gradio_app(app, demo, path="/api/v1/llm_finetuning_run/metric/deepeval")
