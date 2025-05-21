@@ -13,10 +13,6 @@ from deepeval.metrics import (
 )
 
 from constants import (
-    RELEVANCY, 
-    CORRECTNESS, 
-    CLARITY, 
-    PROFESSIONALISM, 
     TEST_DATASET_PATH, 
     TEST_DATASET_DEEPEVAL_PATH, 
     METRIC_DEEPEVAL_PATH, 
@@ -118,7 +114,7 @@ def generate_response() -> str:
     return TEST_DATASET_DEEPEVAL_PATH
 
 
-def set_deepeval_dataset(data_generation_method: str) -> EvaluationDataset:
+def set_deepeval_dataset(testset_label: str) -> EvaluationDataset:
     """
     Set up deepeval dataset from JSON file.
     
@@ -126,85 +122,42 @@ def set_deepeval_dataset(data_generation_method: str) -> EvaluationDataset:
         Initialized EvaluationDataset
     """
     deepeval_dataset = EvaluationDataset()
-
-    # Add test cases from JSON file
-    if data_generation_method == "raft":
-        expected_output_key_name = "cot_answer"
-    else:
-        expected_output_key_name = "answer"
         
     deepeval_dataset.add_test_cases_from_json_file(
         file_path=TEST_DATASET_DEEPEVAL_PATH,
         input_key_name="question",
         actual_output_key_name="actual_output",
-        expected_output_key_name=expected_output_key_name,
+        expected_output_key_name=testset_label,
     )
     return deepeval_dataset
 
 
-def generate_evaluate_pipeline(metric_names: List[str], data_generation_method: str) -> None:
+def generate_evaluate_pipeline(metric_settings: List[dict], testset_label: str) -> None:
     """
     Run the generation and evaluation pipeline with specified metrics.
     
     Args:
-        metric_names: List of metric names to use for evaluation
+        metric_settings: List of metric names to use for evaluation
     """
     # Generate responses for test dataset
     generate_response()
     
     # Set up evaluation dataset
-    deepeval_dataset = set_deepeval_dataset(data_generation_method)
+    deepeval_dataset = set_deepeval_dataset(testset_label)
 
     # Initialize metrics
     metrics = [AnswerRelevancyMetric(threshold=0.5)]  # Default metric
     
     # Add requested metrics
-    for name in metric_names:
-        name = name.lower()
-        
-        if name == RELEVANCY:
-            metrics.append(GEval(
-                name="Relevancy",
-                criteria="Check if the actual output directly addresses the input.",
+    for metric_setting in metric_settings:
+        metrics.append(
+            GEval(
+                name=metric_setting['name'],
+                criteria=metric_setting['criteria'],
+                threshold=metric_setting['threshold'],
                 evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT, LLMTestCaseParams.INPUT]
-            ))
-
-        if name == CORRECTNESS:
-            metrics.append(GEval(
-                name="Correctness",
-                criteria="Determine whether the actual output is factually correct based on the expected output.",
-                evaluation_steps=[
-                    "Check whether the facts in 'actual output' contradicts any facts in 'expected output'",
-                    "You should also heavily penalize omission of detail",
-                    "Vague language, or contradicting OPINIONS, are OK"
-                ],
-                evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT, LLMTestCaseParams.EXPECTED_OUTPUT],
-            ))
-
-        if name == CLARITY:
-            metrics.append(GEval(
-                name="Clarity",
-                evaluation_steps=[
-                    "Evaluate whether the response uses clear and direct language.",
-                    "Check if the explanation avoids jargon or explains it when used.",
-                    "Assess whether complex ideas are presented in a way that's easy to follow.",
-                    "Identify any vague or confusing parts that reduce understanding."
-                ],
-                evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT],
-            ))
-            
-        if name == PROFESSIONALISM:
-            metrics.append(GEval(
-                name="Professionalism",
-                criteria="Assess the level of professionalism and expertise conveyed in the response.",
-                evaluation_steps=[
-                    "Determine whether the actual output maintains a professional tone throughout.",
-                    "Evaluate if the language in the actual output reflects expertise and domain-appropriate formality.",
-                    "Ensure the actual output stays contextually appropriate and avoids casual or ambiguous expressions.",
-                    "Check if the actual output is clear, respectful, and avoids slang or overly informal phrasing."
-                ],
-                evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT],
-            ))
+            )
+        )
 
     # Run evaluation and save results
     evaluation_result = deepeval_dataset.evaluate(metrics)
@@ -217,16 +170,16 @@ def generate_evaluate_pipeline(metric_names: List[str], data_generation_method: 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate LLM with selected metrics.")
     parser.add_argument(
-        "--data-generation-method",
+        "--testset-label",
         required=False,
-        default="raft",
+        default="answer",
     )
     parser.add_argument(
         "--metrics",
-        nargs="+",
-        help="List of metrics to use (e.g., --metrics relevancy correctness hallucination)",
+        help="List of metrics to use (e.g., [{'name': 'Relevancy', 'criteria': 'Check if the actual output directly addresses the input.', 'threshold': 0.5}])",
         required=True,
     )
 
     args = parser.parse_args()
-    generate_evaluate_pipeline(args.metrics, args.data_generation_method)
+    metric_settings = json.loads(args.metrics)
+    generate_evaluate_pipeline(metric_settings, args.testset_label)
