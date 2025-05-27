@@ -13,7 +13,7 @@ from constants import METRIC_TF_EVENT_PATH, METRIC_DEEPEVAL_PATH
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/llm_finetuning_run", tags=["llm_finetuning_run"])
+router = APIRouter(prefix="/api/v1/llm-finetuning-run", tags=["llm-finetuning-run"])
 
 
 class LLMFinetuningRunMetricTFEventResponse(BaseModel):
@@ -133,4 +133,4 @@ with open(METRIC_DEEPEVAL_PATH, "r") as f:
 with gr.Blocks() as demo:
     gr.Dataframe(metric_df)
 
-app = gr.mount_gradio_app(app, demo, path="/api/v1/llm_finetuning_run/metric/deepeval/gradio")
+app = gr.mount_gradio_app(app, demo, path="/api/v1/llm-finetuning-run/metric/deepeval/gradio")
