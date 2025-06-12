@@ -99,7 +99,10 @@ def generate_response() -> str:
         dataset_json = json.load(f)
     
     for ds in dataset_json:
-        question = str(ds['question'])
+        if isinstance(ds['question'], list):
+            question = str(ds['question'][0])
+        else:
+            question = str(ds['question'])
         chat = [
             {"role": "system", "content": "Answer clearly about user input"},
             {"role": "user", "content": question}
