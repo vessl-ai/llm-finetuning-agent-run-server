@@ -99,7 +99,7 @@ def generate_response() -> str:
         dataset_json = json.load(f)
     
     for ds in dataset_json:
-        question = ds['question']
+        question = str(ds['question'])
         chat = [
             {"role": "system", "content": "Answer clearly about user input"},
             {"role": "user", "content": question}
